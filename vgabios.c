@@ -832,6 +832,7 @@ static void biosfn_set_video_mode(mode) Bit8u mode;
  Bit16u i,twidth,theightm1,cheight;
  Bit8u modeset_ctl,video_ctl,vga_switches;
  Bit16u crtc_addr;
+ Bit8u crt_mode;
  
 #ifdef VBE
  if (vbe_has_vbe_display()) { 
@@ -851,6 +852,12 @@ static void biosfn_set_video_mode(mode) Bit8u mode;
 
  if(line==0xFF)
   return;
+
+ // disable crt
+ outb(VGAREG_VGA_CRTC_ADDRESS, 0x17);
+ crt_mode = inb(VGAREG_VGA_CRTC_DATA);
+ crt_mode &= ~(1 << 7);
+ outb(VGAREG_VGA_CRTC_DATA, crt_mode);
 
  vpti=line_to_vpti[line];
  twidth=video_param_table[vpti].twidth;
@@ -1046,6 +1053,12 @@ ASM_START
 ASM_END
      break;
    }
+
+ // enable crt
+ outb(VGAREG_VGA_CRTC_ADDRESS, 0x17);
+ crt_mode = inb(VGAREG_VGA_CRTC_DATA);
+ crt_mode |= (1 << 7);
+ outb(VGAREG_VGA_CRTC_DATA, crt_mode);
 }
 
 // --------------------------------------------------------------------------------------------
