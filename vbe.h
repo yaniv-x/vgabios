@@ -295,6 +295,9 @@ typedef struct ModeInfoListItem
   #define VBE_DISPI_INDEX_X_OFFSET         0x8
   #define VBE_DISPI_INDEX_Y_OFFSET         0x9
   #define VBE_DISPI_INDEX_VIDEO_MEMORY_64K 0xa
+  #define VBE_DISPI_INDEX_LFB              0xb
+  #define VBE_DISPI_INDEX_EDID_WINDOW      0xc
+  #define VBE_DISPI_INDEX_EDID_DATA        0xd
 
   #define VBE_DISPI_ID0                    0xB0C0
   #define VBE_DISPI_ID1                    0xB0C1
@@ -309,7 +312,5 @@ typedef struct ModeInfoListItem
   #define VBE_DISPI_8BIT_DAC               0x20
   #define VBE_DISPI_LFB_ENABLED            0x40
   #define VBE_DISPI_NOCLEARMEM             0x80
-
-  #define VBE_DISPI_LFB_PHYSICAL_ADDRESS   0xE0000000
 
 #endif

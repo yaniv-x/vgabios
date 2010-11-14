@@ -680,6 +680,72 @@ static ModeInfoListItem* mode_info_find_mode(mode, using_lfb)
 
 ASM_START
 
+; from bochs rombios.c
+
+ldivul:
+  and  eax, #0x0000FFFF
+  shl  ebx, #16
+  or   eax, ebx
+  xor  edx, edx
+  SEG  SS
+  mov  bx,  2[di]
+  shl  ebx, #16
+  SEG  SS
+  mov  bx,  [di]
+  div  ebx
+  mov  ebx, eax
+  shr  ebx, #16
+  ret
+
+lsubl:
+lsubul:
+  SEG  SS
+  sub  ax,[di]
+  SEG  SS
+  sbb  bx,2[di]
+  ret
+
+ASM_END
+
+static Bit16u init_vbe_lfb()
+{
+  ModeInfoListItem  *cur_info = &mode_info_list;
+  Bit16u lfb;
+  Bit32u vram_size;
+  Bit32u pages;
+
+  outw(VBE_DISPI_IOPORT_INDEX,VBE_DISPI_INDEX_VIDEO_MEMORY_64K);
+  vram_size = ( Bit32u)inw(VBE_DISPI_IOPORT_DATA) << 16;
+
+  outw(VBE_DISPI_IOPORT_INDEX,VBE_DISPI_INDEX_LFB);
+  lfb = inw(VBE_DISPI_IOPORT_DATA);
+
+  if (lfb == 0) {
+    return 0;
+  }
+
+  while (cur_info->mode != VBE_VESA_MODE_END_OF_LIST) {
+    if ((cur_info->info.ModeAttributes & VBE_MODE_ATTRIBUTE_LINEAR_FRAME_BUFFER_MODE) /*== VBE_MODE_ATTRIBUTE_LINEAR_FRAME_BUFFER_MODE*/) {
+      Bit16u* ptr = &cur_info->info.PhysBasePtr;
+
+      ptr[0] = 0;
+      ptr[1] = lfb;
+    }
+
+    pages = vram_size / ((Bit32u)cur_info->info.YResolution * (Bit32u)cur_info->info.BytesPerScanLine);
+
+    // NumberOfImagePages == 0xff in-case of insufficient memory to support this mode. It can be use to skip
+    // this mode in mods query replacing current test method.
+    cur_info->info.NumberOfImagePages = pages / cur_info->info.NumberOfPlanes - 1; ; 
+
+    cur_info++;
+  }
+
+  return 1;
+}
+
+ASM_START
+
 ; Has VBE display - Returns true if VBE display detected
 
 _vbe_has_vbe_display:
@@ -703,6 +769,13 @@ vbe_init:
   call dispi_set_id
   call dispi_get_id
   cmp  ax, # VBE_DISPI_ID0
+  jne  no_vbe_interface
+  mov  ax, # 0xc000
+  push ds
+  mov  ds, ax
+  call _init_vbe_lfb
+  pop ds
+  cmp ax, #0x01 
   jne  no_vbe_interface
   push ds
   push bx
@@ -1449,4 +1522,102 @@ vbe_biosfn_return_protected_mode_interface:
 _fail:
   mov ax, #0x014f
   ret
+ASM_END
+
+
+/** Function 15h - Return DDC
+ * Input:    AX = 4F15h DDC
+ *
+ *           Test CAPS
+ *               Input:
+ *                   BL = 00h
+ *                   CX = controller number
+ *               Output:
+ *                   AL = 0x4f
+ *                   AH = status
+ *                   BH = Approximation of rounded up time in seconds to transfer
+ *                        one EDID block.
+ *                   BL =
+ *                        bit0 - DDC1 support
+ *                        bit1 - DDC2 support
+ *                        bit2 - screen blanked during data transfer
+ *                   CX unchanged
+ *                   ES:DI unchanged                   
+ *
+ *           Read EDID      
+ *               Input:
+ *                   BL = 01h
+ *                   DX = block number
+ *                   CX = controller number
+ *                   ES:DI = output pointer
+ *               Output:
+ *                   AL = 0x4f
+ *                   AH = status
+ *                   BH unchanged
+ *                   CX unchanged
+ *                   ES:DI unchanged
+ *
+ */
+
+ASM_START
+
+vbe_biosfn_ddc:
+ cmp bl, #0x00
+ jne read_edid
+ cmp cx, #0
+ jne f15_failed
+ 
+ mov bh, #1
+ mov bl, #0x02
+ mov ax, #0x004f
+ ret
+
+read_edid:
+ cmp bl, #0x01
+ jne f15_failed
+ cmp cx, #0
+ jne f15_failed
+
+ push cx
+ mov  cx, dx
+ 
+ mov  dx, # VBE_DISPI_IOPORT_INDEX
+ mov  ax, # VBE_DISPI_INDEX_EDID_WINDOW
+ out  dx, ax
+
+ mov  dx, # VBE_DISPI_IOPORT_DATA
+ mov  ax, cx
+ out  dx, ax
+ in   ax, dx
+ cmp  ax, cx
+ mov  dx, cx
+ pop  cx
+ jne f15_failed
+
+ push dx
+ push cx
+ push di
+ pushf
+ 
+ mov  dx, # VBE_DISPI_IOPORT_INDEX
+ mov  ax, # VBE_DISPI_INDEX_EDID_DATA
+ out  dx, ax
+
+ mov cx, #64
+ cld
+ mov dx, # VBE_DISPI_IOPORT_DATA
+ rep
+   insw
+
+ popf
+ pop di
+ pop cx
+ pop dx
+ mov ax, #0x004f
+ ret
+
+f15_failed:
+ mov ax, #0x014f
+ ret
+
 ASM_END

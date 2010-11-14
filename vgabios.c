@@ -382,8 +382,13 @@ int10_test_vbe_08:
   jmp   int10_end
 int10_test_vbe_0A:
   cmp   al, #0x0A
-  jne   int10_normal
+  jne   int10_test_vbe_15
   call  vbe_biosfn_return_protected_mode_interface
+  jmp   int10_end
+int10_test_vbe_15:
+  cmp   al, #0x15
+  jne   int10_normal
+  call  vbe_biosfn_ddc
   jmp   int10_end
 #endif
 
