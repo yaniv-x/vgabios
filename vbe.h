@@ -298,6 +298,8 @@ typedef struct ModeInfoListItem
   #define VBE_DISPI_INDEX_LFB              0xb
   #define VBE_DISPI_INDEX_EDID_WINDOW      0xc
   #define VBE_DISPI_INDEX_EDID_DATA        0xd
+  #define VBE_DISPI_PALETTE_WRITE_INDEX    0xe
+  #define VBE_DISPI_PALETTE_DATA           0xf
 
   #define VBE_DISPI_ID0                    0xB0C0
   #define VBE_DISPI_ID1                    0xB0C1

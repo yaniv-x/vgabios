@@ -785,12 +785,7 @@ static void int10_func(DI, SI, BP, SP, BX, DX, CX, AX, DS, ES, FLAGS)
           vbe_biosfn_save_restore_state(&AX, CX, DX, ES, &BX);
           break;
          case 0x09:
-          //FIXME
-#ifdef DEBUG
-          unimplemented();
-#endif
-          // function failed
-          AX=0x100;
+          vbe_biosfn_set_get_palette_data(&AX, BX, CX, DX, BX, ES, DI);
           break;
          case 0x0A:
           //FIXME

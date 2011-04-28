@@ -86,7 +86,7 @@ msg_vbe_init:
 vesa_pm_start:
   dw vesa_pm_set_window - vesa_pm_start
   dw vesa_pm_set_display_start - vesa_pm_start
-  dw vesa_pm_unimplemented - vesa_pm_start
+  dw vesa_pm_set_palette_data - vesa_pm_start
   dw vesa_pm_io_ports_table - vesa_pm_start
 vesa_pm_io_ports_table:
   dw VBE_DISPI_IOPORT_INDEX
@@ -208,6 +208,72 @@ set_xy_regs:
   pop ecx
   pop eax
   mov  ax, #0x004f
+  ret
+
+
+;bl 0x00 => set palette data
+;bl 0x80 => set palette data on V retrace
+;cx count
+;dx start
+;es:edi tabel (db b, db g, db r, db lignment)[]
+
+vesa_pm_set_palette_data:
+
+  cmp bl, #0x00
+  je vesa_pm_set_palette_data_start
+  cmp bl, #0x80
+  je vesa_pm_set_palette_data_start
+  jmp vesa_pm_set_palette_data_err
+
+vesa_pm_set_palette_data_start:
+  test cx, cx
+  jz vesa_pm_set_palette_data_done
+  cmp dx, #0xff
+  ja  vesa_pm_set_palette_data_err
+  cmp cx, #0x100
+  ja  vesa_pm_set_palette_data_err
+  mov ax, cx
+  add ax, dx
+  cmp ax, #0x100
+  ja  vesa_pm_set_palette_data_err
+  
+  push dx
+  push cx
+  push edi
+  push ds
+
+  push dx
+  mov dx, #VBE_DISPI_IOPORT_INDEX
+  mov ax, #VBE_DISPI_PALETTE_WRITE_INDEX
+  out dx, ax
+  pop ax
+  mov dx, #VBE_DISPI_IOPORT_DATA
+  out dx, ax
+  mov dx, #VBE_DISPI_IOPORT_INDEX
+  mov ax, #VBE_DISPI_PALETTE_DATA
+  out dx, ax
+
+  mov dx, #VBE_DISPI_IOPORT_DATA
+  mov ax, es
+  mov ds, ax
+  shl cx, #1
+vesa_pm_set_palette_data_more:
+  mov ax, [edi]
+  add edi, #2 
+  out dx, ax
+  loop vesa_pm_set_palette_data_more
+  
+  pop ds
+  pop edi
+  pop cx
+  pop dx
+
+vesa_pm_set_palette_data_done:
+  mov  ax, #0x004f
+  ret
+
+vesa_pm_set_palette_data_err:
+  mov  ax, #0x014f
   ret
 
 vesa_pm_unimplemented:
@@ -1488,13 +1554,48 @@ ASM_END
  * 
  * Input:
  *              AX      = 4F09h
+ *              BL      = 00h Set Palette Data
+ *                      = 01h Get Palette Data
+ *                      = 02h Set Secondary Palette Data
+ *                      = 03h Get Secondary Palette Data
+ *                      = 08h Set Palette Data during Vertical Retrace
+ *              CX      = Number of palette registers
+ *              DX      = First entry 
+ *              ES:DI   = Table of palette values (db blue, db green, db red, db qlignment)
  * Output:
  *              AX      = VBE Return Status
  *
- * FIXME: incomplete API description, Input & Output
  */
-void vbe_biosfn_set_get_palette_data(AX)
+void vbe_biosfn_set_get_palette_data(AX, BX, CX, DX, ES, DI)
+Bit16u *AX; Bit16u BX; Bit16u CX; Bit16u DX; Bit16u ES; Bit16u DI;
 {
+    Bit16u i;
+
+    printf("vbe_biosfn_set_get_palette_data: unsafe path\n");
+    *AX = 0x014f;
+    return;
+
+    if (!CX) {
+        *AX = 0x004f;
+        return;
+    }
+    
+    if (CX > 0x0100 || DX > 0xff || CX + DX > 0x0100 ||
+        ((BX & 0xff) != 0 && (BX & 0xff) != 0x80)) {
+        *AX = 0x014f;
+        return;
+    }
+    
+    outw(VBE_DISPI_IOPORT_INDEX, VBE_DISPI_PALETTE_WRITE_INDEX);
+    outw(VBE_DISPI_IOPORT_DATA, DX);
+    outw(VBE_DISPI_IOPORT_INDEX, VBE_DISPI_PALETTE_DATA);
+
+    for (i = 0; i < CX * 2; i++) {
+        outw(VBE_DISPI_IOPORT_DATA, read_word(ES, DI + i * 2));
+    }
+
+    *AX = 0x004f;
+    return;
 }
 
 /** Function 0Ah - Return VBE Protected Mode Interface
