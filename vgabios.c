@@ -838,6 +838,8 @@ static void biosfn_set_video_mode(mode) Bit8u mode;
  Bit8u modeset_ctl,video_ctl,vga_switches;
  Bit16u crtc_addr;
  Bit8u crt_mode;
+ Bit8u current_mode;
+ Bit8u curr_line;
  
 #ifdef VBE
  if (vbe_has_vbe_display()) { 
@@ -859,10 +861,16 @@ static void biosfn_set_video_mode(mode) Bit8u mode;
   return;
 
  // disable crt
- outb(VGAREG_VGA_CRTC_ADDRESS, 0x17);
- crt_mode = inb(VGAREG_VGA_CRTC_DATA);
- crt_mode &= ~(1 << 7);
- outb(VGAREG_VGA_CRTC_DATA, crt_mode);
+
+ current_mode = read_byte(BIOSMEM_SEG,BIOSMEM_CURRENT_MODE);
+ curr_line = find_vga_entry(current_mode);
+ if (curr_line != 0xFF) {
+    crtc_addr = (vga_modes[curr_line].memmodel == MTEXT) ? VGAREG_MDA_CRTC_ADDRESS : VGAREG_VGA_CRTC_ADDRESS;
+    outb(crtc_addr, 0x17);
+    crt_mode = inb(crtc_addr + 1);
+    crt_mode &= ~(1 << 7);
+    outb(crtc_addr + 1, crt_mode);
+ }
 
  vpti=line_to_vpti[line];
  twidth=video_param_table[vpti].twidth;
@@ -951,6 +959,9 @@ static void biosfn_set_video_mode(mode) Bit8u mode;
  // Set CRTC address VGA or MDA 
  crtc_addr=vga_modes[line].memmodel==MTEXT?VGAREG_MDA_CRTC_ADDRESS:VGAREG_VGA_CRTC_ADDRESS;
 
+ // Set the misc register
+ outb(VGAREG_WRITE_MISC_OUTPUT,video_param_table[vpti].miscreg);
+
  // Disable CRTC write protection
  outw(crtc_addr,0x0011);
  // Set CRTC regs
@@ -958,9 +969,6 @@ static void biosfn_set_video_mode(mode) Bit8u mode;
   {outb(crtc_addr,i);
    outb(crtc_addr+1,video_param_table[vpti].crtc_regs[i]);
   }
-
- // Set the misc register
- outb(VGAREG_WRITE_MISC_OUTPUT,video_param_table[vpti].miscreg);
 
  // Enable video
  outb(VGAREG_ACTL_ADDRESS,0x20);
