@@ -1124,14 +1124,22 @@ Bit16u *AX;Bit16u BX; Bit16u ES;Bit16u DI;
         if (BX<VBE_MODE_VESA_DEFINED)
         {
                 Bit8u   mode;
+                Bit8u   current_mode;
 
                 dispi_set_enable(VBE_DISPI_DISABLED);
                 // call the vgabios in order to set the video mode
                 // this allows for going back to textmode with a VBE call (some applications expect that to work)
 
+#ifdef DEBUG
+                printf("vbe_biosfn_set_mode: redirect mode 0x%x to std vga\n", mode);
+#endif
                 mode=(BX & 0xff);
                 biosfn_set_video_mode(mode);
                 result = 0x4f;
+                current_mode = read_byte(BIOSMEM_SEG,BIOSMEM_CURRENT_MODE);
+
+                write_word(ss, AX, (current_mode == mode) ? 0x004f: 0x014f);
+                return;
         }
 
         cur_info = mode_info_find_mode(BX, using_lfb, &cur_info);
