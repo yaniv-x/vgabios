@@ -492,6 +492,11 @@ init_bios_area:
   mov   al, #0x09
   mov   [bx], al
 
+;; Set the  crtc io address
+  mov   bx, # BIOSMEM_CRTC_ADDRESS
+  mov   ax, #0x03b4
+  mov   [bx], ax
+
   pop ds
   ret
 
@@ -779,7 +784,7 @@ static void int10_func(DI, SI, BP, SP, BX, DX, CX, AX, DS, ES, FLAGS)
           vbe_biosfn_return_mode_information(&AX,CX,ES,DI);
           break;
          case 0x02:
-          vbe_biosfn_set_mode(&AX,BX,ES,DI);
+          vbe_biosfn_set_mode(&AX,BX);
           break;
          case 0x04:
           vbe_biosfn_save_restore_state(&AX, CX, DX, ES, &BX);
@@ -833,8 +838,7 @@ static void biosfn_set_video_mode(mode) Bit8u mode;
  Bit8u modeset_ctl,video_ctl,vga_switches;
  Bit16u crtc_addr;
  Bit8u crt_mode;
- Bit8u current_mode;
- Bit8u curr_line;
+ Bit8u clear_fb;
  
 #ifdef VBE
  if (vbe_has_vbe_display()) { 
@@ -843,7 +847,16 @@ static void biosfn_set_video_mode(mode) Bit8u mode;
 #endif // def VBE
  
  // The real mode
+ clear_fb=!!(mode & 0x80);
  mode=mode&0x7f;
+
+#ifdef VBE
+ if (mode == VBE_COMPAT_MODE) {
+    Bit8u ax = 0x4f02;
+    vbe_biosfn_set_mode(&ax, read_word(BIOSMEM_SEG,BIOSMEM_VBE_MODE) | (clear_fb ? 1 << 15: 9));    
+    return;
+ }
+#endif
 
  // find the entry in the video modes
  line=find_vga_entry(mode);
@@ -856,16 +869,11 @@ static void biosfn_set_video_mode(mode) Bit8u mode;
   return;
 
  // disable crt
-
- current_mode = read_byte(BIOSMEM_SEG,BIOSMEM_CURRENT_MODE);
- curr_line = find_vga_entry(current_mode);
- if (curr_line != 0xFF) {
-    crtc_addr = (vga_modes[curr_line].memmodel == MTEXT) ? VGAREG_MDA_CRTC_ADDRESS : VGAREG_VGA_CRTC_ADDRESS;
-    outb(crtc_addr, 0x17);
-    crt_mode = inb(crtc_addr + 1);
-    crt_mode &= ~(1 << 7);
-    outb(crtc_addr + 1, crt_mode);
- }
+ crtc_addr =  read_word(BIOSMEM_SEG,BIOSMEM_CRTC_ADDRESS);
+ outb(crtc_addr, 0x17);
+ crt_mode = inb(crtc_addr + 1);
+ crt_mode &= ~(1 << 7);
+ outb(crtc_addr + 1, crt_mode);
 
  vpti=line_to_vpti[line];
  twidth=video_param_table[vpti].twidth;

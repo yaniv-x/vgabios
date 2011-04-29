@@ -1102,8 +1102,8 @@ Bit16u *AX;Bit16u CX; Bit16u ES;Bit16u DI;
  *              AX      = VBE Return Status
  * 
  */
-void vbe_biosfn_set_mode(AX, BX, ES, DI)
-Bit16u *AX;Bit16u BX; Bit16u ES;Bit16u DI;
+void vbe_biosfn_set_mode(AX, BX)
+Bit16u *AX;Bit16u BX;
 {
         Bit16u            ss = get_SS();
         Bit16u            result;
@@ -1171,6 +1171,10 @@ Bit16u *AX;Bit16u BX; Bit16u ES;Bit16u DI;
 
                 write_word(BIOSMEM_SEG,BIOSMEM_VBE_MODE,BX);
                 write_byte(BIOSMEM_SEG,BIOSMEM_VIDEO_CTL,(0x60 | no_clear));
+
+                write_byte(BIOSMEM_SEG,BIOSMEM_CURRENT_MODE, VBE_COMPAT_MODE);
+                write_byte(BIOSMEM_SEG,BIOSMEM_CURRENT_PAGE, 0);
+                // BIOSMEM_NB_COLS ?
 
                 result = 0x4f;
         }
