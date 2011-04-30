@@ -492,9 +492,9 @@ init_bios_area:
   mov   al, #0x09
   mov   [bx], al
 
-;; Set the  crtc io address
+;; Set the  crtc io address (init_vga_card set CGA addressing)
   mov   bx, # BIOSMEM_CRTC_ADDRESS
-  mov   ax, #0x03b4
+  mov   ax, #0x03d4
   mov   [bx], ax
 
   pop ds
@@ -1071,10 +1071,10 @@ ASM_END
    }
 
  // enable crt
- outb(VGAREG_VGA_CRTC_ADDRESS, 0x17);
- crt_mode = inb(VGAREG_VGA_CRTC_DATA);
+ outb(crtc_addr, 0x17);
+ crt_mode = inb(crtc_addr + 1);
  crt_mode |= (1 << 7);
- outb(VGAREG_VGA_CRTC_DATA, crt_mode);
+ outb(crtc_addr + 1, crt_mode);
 }
 
 // --------------------------------------------------------------------------------------------
