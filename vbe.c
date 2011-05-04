@@ -1583,10 +1583,6 @@ Bit16u *AX; Bit16u BX; Bit16u CX; Bit16u DX; Bit16u ES; Bit16u DI;
 {
     Bit16u i;
 
-    printf("vbe_biosfn_set_get_palette_data: unsafe path\n");
-    *AX = 0x014f;
-    return;
-
     if (!CX) {
         *AX = 0x004f;
         return;
