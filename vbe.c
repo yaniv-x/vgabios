@@ -1112,6 +1112,10 @@ Bit16u *AX;Bit16u BX;
         Bit8u             no_clear;
         Bit8u             lfb_flag;
 
+#ifdef DEBUG
+        printf("vbe_biosfn_set_mode: 0x%x\n", BX);
+#endif
+
         using_lfb=((BX & VBE_MODE_LINEAR_FRAME_BUFFER) == VBE_MODE_LINEAR_FRAME_BUFFER);
         lfb_flag=using_lfb?VBE_DISPI_LFB_ENABLED:0;
         no_clear=((BX & VBE_MODE_PRESERVE_DISPLAY_MEMORY) == VBE_MODE_PRESERVE_DISPLAY_MEMORY)?VBE_DISPI_NOCLEARMEM:0;
@@ -1134,7 +1138,7 @@ Bit16u *AX;Bit16u BX;
                 printf("vbe_biosfn_set_mode: redirect mode 0x%x to std vga\n", mode);
 #endif
                 mode=(BX & 0xff);
-                biosfn_set_video_mode(mode);
+                biosfn_set_video_mode(mode | ((no_clear) ? 0x80 : 0));
                 result = 0x4f;
                 current_mode = read_byte(BIOSMEM_SEG,BIOSMEM_CURRENT_MODE);
 

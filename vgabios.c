@@ -839,6 +839,10 @@ static void biosfn_set_video_mode(mode) Bit8u mode;
  Bit16u crtc_addr;
  Bit8u crt_mode;
  Bit8u clear_fb;
+
+#ifdef DEBUG
+ printf("vbe_biosfn_set_mode: 0x%x\n", mode);
+#endif
  
 #ifdef VBE
  if (vbe_has_vbe_display()) { 
