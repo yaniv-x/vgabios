@@ -278,12 +278,6 @@ typedef struct ModeInfoListItem
   #define VBE_DISPI_BANK_ADDRESS           0xA0000
   #define VBE_DISPI_BANK_SIZE_KB           64
 
-  #define VBE_DISPI_MAX_XRES               2560
-  #define VBE_DISPI_MAX_YRES               1600
-
-  #define VBE_DISPI_IOPORT_INDEX           0x01CE
-  #define VBE_DISPI_IOPORT_DATA            0x01CF
-
   #define VBE_DISPI_INDEX_ID               0x0
   #define VBE_DISPI_INDEX_XRES             0x1
   #define VBE_DISPI_INDEX_YRES             0x2
@@ -295,11 +289,10 @@ typedef struct ModeInfoListItem
   #define VBE_DISPI_INDEX_X_OFFSET         0x8
   #define VBE_DISPI_INDEX_Y_OFFSET         0x9
   #define VBE_DISPI_INDEX_VIDEO_MEMORY_64K 0xa
-  #define VBE_DISPI_INDEX_LFB              0xb
-  #define VBE_DISPI_INDEX_EDID_WINDOW      0xc
-  #define VBE_DISPI_INDEX_EDID_DATA        0xd
-  #define VBE_DISPI_PALETTE_WRITE_INDEX    0xe
-  #define VBE_DISPI_PALETTE_DATA           0xf
+  #define VBE_DISPI_INDEX_EDID_WINDOW      0xb
+  #define VBE_DISPI_INDEX_EDID_DATA        0xc
+  #define VBE_DISPI_PALETTE_WRITE_INDEX    0xd
+  #define VBE_DISPI_PALETTE_DATA           0xe
 
   #define VBE_DISPI_ID0                    0xB0C0
   #define VBE_DISPI_ID1                    0xB0C1

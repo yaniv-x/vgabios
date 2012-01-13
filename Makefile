@@ -14,12 +14,9 @@ RELVERS = `pwd | sed "s-.*/--" | sed "s/vgabios//" | sed "s/-//"`
 
 VGABIOS_DATE = "-DVGABIOS_DATE=\"$(RELDATE)\""
 
-all: bios cirrus-bios
-
+all: bios
 
 bios: biossums vgabios.bin vgabios.debug.bin
-
-cirrus-bios: vgabios-cirrus.bin vgabios-cirrus.debug.bin
 
 clean:
 	/bin/rm -f  biossums vbetables-gen vbetables.h *.o *.s *.ld86 \
@@ -38,6 +35,7 @@ release:
 	tar czvf ../$(RELEASE).tgz --exclude CVS -C .. $(RELEASE)/
 
 vgabios.bin: vgabios.c vgabios.h vgafonts.h vgatables.h vbe.h vbe.c vbetables.h
+	rm -f VGABIOS-lgpl-latest.bin
 	$(GCC) -E -P vgabios.c $(VGABIOS_VERS) -DVBE $(VGABIOS_DATE) > _vgabios_.c
 	$(BCC) -o vgabios.s -C-c -D__i86__ -S -0 _vgabios_.c
 	sed -e 's/^\.text//' -e 's/^\.data//' vgabios.s > _vgabios_.s
@@ -56,26 +54,6 @@ vgabios.debug.bin: vgabios.c vgabios.h vgafonts.h vgatables.h vbe.h vbe.c vbetab
 	mv vgabios.debug.bin VGABIOS-lgpl-latest.debug.bin
 	./biossums VGABIOS-lgpl-latest.debug.bin
 	ls -l VGABIOS-lgpl-latest.debug.bin
-
-vgabios-cirrus.bin: vgabios.c vgabios.h vgafonts.h vgatables.h clext.c
-	$(GCC) -E -P vgabios.c $(VGABIOS_VERS) -DCIRRUS -DPCIBIOS $(VGABIOS_DATE) > _vgabios-cirrus_.c
-	$(BCC) -o vgabios-cirrus.s -C-c -D__i86__ -S -0 _vgabios-cirrus_.c
-	sed -e 's/^\.text//' -e 's/^\.data//' vgabios-cirrus.s > _vgabios-cirrus_.s
-	$(AS86) _vgabios-cirrus_.s -b vgabios-cirrus.bin -u -w- -g -0 -j -O -l vgabios.cirrus.txt
-	rm -f _vgabios-cirrus_.s _vgabios-cirrus_.c vgabios-cirrus.s
-	mv vgabios-cirrus.bin VGABIOS-lgpl-latest.cirrus.bin
-	./biossums VGABIOS-lgpl-latest.cirrus.bin
-	ls -l VGABIOS-lgpl-latest.cirrus.bin
-
-vgabios-cirrus.debug.bin: vgabios.c vgabios.h vgafonts.h vgatables.h clext.c
-	$(GCC) -E -P vgabios.c $(VGABIOS_VERS) -DCIRRUS -DCIRRUS_DEBUG -DPCIBIOS $(VGABIOS_DATE) > _vgabios-cirrus-debug_.c
-	$(BCC) -o vgabios-cirrus-debug.s -C-c -D__i86__ -S -0 _vgabios-cirrus-debug_.c
-	sed -e 's/^\.text//' -e 's/^\.data//' vgabios-cirrus-debug.s > _vgabios-cirrus-debug_.s
-	$(AS86) _vgabios-cirrus-debug_.s -b vgabios.cirrus.debug.bin -u -w- -g -0 -j -O -l vgabios.cirrus.debug.txt
-	rm -f _vgabios-cirrus-debug_.s _vgabios-cirrus-debug_.c vgabios-cirrus-debug.s
-	mv vgabios.cirrus.debug.bin VGABIOS-lgpl-latest.cirrus.debug.bin
-	./biossums VGABIOS-lgpl-latest.cirrus.debug.bin
-	ls -l VGABIOS-lgpl-latest.cirrus.debug.bin
 
 biossums: biossums.c
 	$(CC) -o biossums biossums.c

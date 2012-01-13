@@ -45,6 +45,7 @@ extern char vbebios_copyright;
 extern char vbebios_vendor_name;
 extern char vbebios_product_name;
 extern char vbebios_product_revision;
+extern Bit16u vesa_pm_io_ports_table[];
 
 ASM_START
 // FIXME: 'merge' these (c) etc strings with the vgabios.c strings?
@@ -87,12 +88,12 @@ vesa_pm_start:
   dw vesa_pm_set_window - vesa_pm_start
   dw vesa_pm_set_display_start - vesa_pm_start
   dw vesa_pm_set_palette_data - vesa_pm_start
-  dw vesa_pm_io_ports_table - vesa_pm_start
-vesa_pm_io_ports_table:
-  dw VBE_DISPI_IOPORT_INDEX
-  dw VBE_DISPI_IOPORT_INDEX + 1
-  dw VBE_DISPI_IOPORT_DATA
-  dw VBE_DISPI_IOPORT_DATA + 1
+  dw _vesa_pm_io_ports_table - vesa_pm_start
+_vesa_pm_io_ports_table:
+  dw 0
+  dw 0
+  dw 0
+  dw 0
   dw 0xffff
   dw 0xffff
 
@@ -106,11 +107,11 @@ vesa_pm_set_display_window1:
   mov  ax, dx
   push dx
   push ax
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_BANK
   out  dx, ax
   pop  ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   out  dx, ax
   in   ax, dx
   pop  dx
@@ -144,17 +145,17 @@ vesa_pm_set_display_start1:
   mov eax, ecx
 
   push eax
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_VIRT_WIDTH
   out  dx, ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   in   ax, dx
   movzx ecx, ax
 
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_BPP
   out  dx, ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   in   ax, dx
   movzx esi, ax
   pop  eax
@@ -183,22 +184,22 @@ bpp4_mode:
 set_xy_regs:
   push dx
   push ax
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_X_OFFSET
   out  dx, ax
   pop  ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   out  dx, ax
   pop  dx
 
   mov  ax, di
   push dx
   push ax
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_Y_OFFSET
   out  dx, ax
   pop  ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   out  dx, ax
   pop  dx
 
@@ -243,17 +244,17 @@ vesa_pm_set_palette_data_start:
   push ds
 
   push dx
-  mov dx, #VBE_DISPI_IOPORT_INDEX
+  mov dx, _io_vbe_select
   mov ax, #VBE_DISPI_PALETTE_WRITE_INDEX
   out dx, ax
   pop ax
-  mov dx, #VBE_DISPI_IOPORT_DATA
+  mov dx, _io_vbe_data
   out dx, ax
-  mov dx, #VBE_DISPI_IOPORT_INDEX
+  mov dx, _io_vbe_select
   mov ax, #VBE_DISPI_PALETTE_DATA
   out dx, ax
 
-  mov dx, #VBE_DISPI_IOPORT_DATA
+  mov dx, _io_vbe_data
   mov ax, es
   mov ds, ax
   shl cx, #1
@@ -286,10 +287,10 @@ vesa_pm_end:
 
 dispi_get_id:
   push dx
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_ID
   out  dx, ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   in   ax, dx
   pop  dx
   ret
@@ -297,11 +298,11 @@ dispi_get_id:
 dispi_set_id:
   push dx
   push ax
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_ID
   out  dx, ax
   pop  ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   out  dx, ax
   pop  dx
   ret
@@ -316,10 +317,10 @@ ASM_START
   push ax
   push dx
 
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_XRES
   out  dx, ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   mov  ax, 4[bp] ; xres
   out  dx, ax
 
@@ -332,25 +333,25 @@ ASM_END
 static void dispi_set_yres(yres)
   Bit16u yres;
 {
-  outw(VBE_DISPI_IOPORT_INDEX,VBE_DISPI_INDEX_YRES);
-  outw(VBE_DISPI_IOPORT_DATA,yres);
+  outw(io_vbe_select,VBE_DISPI_INDEX_YRES);
+  outw(io_vbe_data,yres);
 }
 
 static void dispi_set_bpp(bpp)
   Bit16u bpp;
 {
-  outw(VBE_DISPI_IOPORT_INDEX,VBE_DISPI_INDEX_BPP);
-  outw(VBE_DISPI_IOPORT_DATA,bpp);
+  outw(io_vbe_select,VBE_DISPI_INDEX_BPP);
+  outw(io_vbe_data,bpp);
 }
 
 ASM_START
 ; AL = bits per pixel / AH = bytes per pixel
 dispi_get_bpp:
   push dx
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_BPP
   out  dx, ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   in   ax, dx
   mov  ah, al
   shr  ah, 3
@@ -370,10 +371,10 @@ _dispi_get_max_xres:
   mov  bx, ax
   or   ax, # VBE_DISPI_GETCAPS
   call _dispi_set_enable
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_XRES
   out  dx, ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   in   ax, dx
   push ax
   mov  ax, bx
@@ -390,10 +391,10 @@ _dispi_get_max_bpp:
   mov  bx, ax
   or   ax, # VBE_DISPI_GETCAPS
   call _dispi_set_enable
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_BPP
   out  dx, ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   in   ax, dx
   push ax
   mov  ax, bx
@@ -406,21 +407,21 @@ _dispi_get_max_bpp:
 _dispi_set_enable:
   push dx
   push ax
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_ENABLE
   out  dx, ax
   pop  ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   out  dx, ax
   pop  dx
   ret
 
 dispi_get_enable:
   push dx
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_ENABLE
   out  dx, ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   in   ax, dx
   pop  dx
   ret
@@ -428,21 +429,21 @@ dispi_get_enable:
 _dispi_set_bank:
   push dx
   push ax
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_BANK
   out  dx, ax
   pop  ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   out  dx, ax
   pop  dx
   ret
 
 dispi_get_bank:
   push dx
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_BANK
   out  dx, ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   in   ax, dx
   pop  dx
   ret
@@ -459,10 +460,10 @@ ASM_START
   push dx
   push ax
   mov ax,# VBE_DISPI_INDEX_BANK
-  mov dx,# VBE_DISPI_IOPORT_INDEX
+  mov dx, _io_vbe_select
   out dx,ax
   pop ax
-  mov dx,# VBE_DISPI_IOPORT_DATA
+  mov dx, _io_vbe_data
   out dx,ax
   in  ax,dx
   pop dx
@@ -472,9 +473,9 @@ ASM_START
   retf
 dispi_set_bank_farcall_get:
   mov ax,# VBE_DISPI_INDEX_BANK
-  mov dx,# VBE_DISPI_IOPORT_INDEX
+  mov dx, _io_vbe_select
   out dx,ax
-  mov dx,# VBE_DISPI_IOPORT_DATA
+  mov dx, _io_vbe_data
   in ax,dx
   mov dx,ax
   retf
@@ -488,21 +489,21 @@ ASM_START
 dispi_set_x_offset:
   push dx
   push ax
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_X_OFFSET
   out  dx, ax
   pop  ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   out  dx, ax
   pop  dx
   ret
 
 dispi_get_x_offset:
   push dx
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_X_OFFSET
   out  dx, ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   in   ax, dx
   pop  dx
   ret
@@ -510,21 +511,21 @@ dispi_get_x_offset:
 dispi_set_y_offset:
   push dx
   push ax
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_Y_OFFSET
   out  dx, ax
   pop  ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   out  dx, ax
   pop  dx
   ret
 
 dispi_get_y_offset:
   push dx
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_Y_OFFSET
   out  dx, ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   in   ax, dx
   pop  dx
   ret
@@ -553,31 +554,31 @@ dispi_set_virt_width:
   call vga_set_virt_width
   push dx
   push ax
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_VIRT_WIDTH
   out  dx, ax
   pop  ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   out  dx, ax
   pop  dx
   ret
 
 dispi_get_virt_width:
   push dx
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_VIRT_WIDTH
   out  dx, ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   in   ax, dx
   pop  dx
   ret
 
 dispi_get_virt_height:
   push dx
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_VIRT_HEIGHT
   out  dx, ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   in   ax, dx
   pop  dx
   ret
@@ -587,10 +588,10 @@ _vga_compat_setup:
   push dx
 
   ; set CRT X resolution
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_XRES
   out  dx, ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   in   ax, dx
   push ax
   mov  dx, # VGAREG_VGA_CRTC_ADDRESS
@@ -607,10 +608,10 @@ _vga_compat_setup:
   call vga_set_virt_width
 
   ; set CRT Y resolution
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_YRES
   out  dx, ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   in   ax, dx
   dec  ax
   push ax
@@ -664,10 +665,10 @@ bit9_clear:
   out  dx, ax
 
   ; settings for >= 8bpp
-  mov  dx, # VBE_DISPI_IOPORT_INDEX
+  mov  dx, _io_vbe_select
   mov  ax, # VBE_DISPI_INDEX_BPP
   out  dx, ax
-  mov  dx, # VBE_DISPI_IOPORT_DATA
+  mov  dx, _io_vbe_data
   in   ax, dx
   cmp  al, #0x08
   jb   vga_compat_end
@@ -773,29 +774,27 @@ lsubul:
 
 ASM_END
 
+
+static void init_port_table()
+{
+    vesa_pm_io_ports_table[0] = io_vbe_select;
+    vesa_pm_io_ports_table[1] = io_vbe_select + 1;
+    vesa_pm_io_ports_table[2] = io_vbe_data;
+    vesa_pm_io_ports_table[3] = io_vbe_data + 1;
+}
+
 static Bit16u init_vbe_lfb()
 {
   ModeInfoListItem  *cur_info = &mode_info_list;
-  Bit16u lfb;
   Bit32u vram_size;
   Bit32u pages;
 
-  outw(VBE_DISPI_IOPORT_INDEX,VBE_DISPI_INDEX_VIDEO_MEMORY_64K);
-  vram_size = ( Bit32u)inw(VBE_DISPI_IOPORT_DATA) << 16;
-
-  outw(VBE_DISPI_IOPORT_INDEX,VBE_DISPI_INDEX_LFB);
-  lfb = inw(VBE_DISPI_IOPORT_DATA);
-
-  if (lfb == 0) {
-    return 0;
-  }
+  outw(io_vbe_select,VBE_DISPI_INDEX_VIDEO_MEMORY_64K);
+  vram_size = ( Bit32u)inw(io_vbe_data) << 16;
 
   while (cur_info->mode != VBE_VESA_MODE_END_OF_LIST) {
     if ((cur_info->info.ModeAttributes & VBE_MODE_ATTRIBUTE_LINEAR_FRAME_BUFFER_MODE) /*== VBE_MODE_ATTRIBUTE_LINEAR_FRAME_BUFFER_MODE*/) {
-      Bit16u* ptr = &cur_info->info.PhysBasePtr;
-
-      ptr[0] = 0;
-      ptr[1] = lfb;
+      cur_info->info.PhysBasePtr = frame_buffer;
     }
 
     pages = vram_size / ((Bit32u)cur_info->info.YResolution * (Bit32u)cur_info->info.BytesPerScanLine);
@@ -839,6 +838,7 @@ vbe_init:
   mov  ax, # 0xc000
   push ds
   mov  ds, ax
+  call _init_port_table
   call _init_vbe_lfb
   pop ds
   cmp ax, #0x01 
@@ -971,8 +971,8 @@ Bit16u *AX;Bit16u ES;Bit16u DI;
         vbe_info_block.VideoModePtr_Off= DI + 34;
 
         // VBE Total Memory (in 64k blocks)
-        outw(VBE_DISPI_IOPORT_INDEX, VBE_DISPI_INDEX_VIDEO_MEMORY_64K);
-        vbe_info_block.TotalMemory = inw(VBE_DISPI_IOPORT_DATA);
+        outw(io_vbe_select, VBE_DISPI_INDEX_VIDEO_MEMORY_64K);
+        vbe_info_block.TotalMemory = inw(io_vbe_data);
 
         if (vbe2_info)
         {
@@ -1042,7 +1042,6 @@ Bit16u *AX;Bit16u CX; Bit16u ES;Bit16u DI;
         ModeInfoBlock     info;
         ModeInfoListItem  *cur_info;
         Boolean           using_lfb;
-        Bit16u            lfb_addr;
 
 #ifdef DEBUG
         printf("VBE vbe_biosfn_return_mode_information ES%x DI%x CX%x\n",ES,DI,CX);
@@ -1064,10 +1063,7 @@ Bit16u *AX;Bit16u CX; Bit16u ES;Bit16u DI;
                 if (using_lfb) {
                   info.NumberOfBanks = 1;
                 }
-                lfb_addr = pci_get_lfb_addr(0x1234); // experimental vendor
-                if (lfb_addr > 0) {
-                  info.PhysBasePtr = ((Bit32u)lfb_addr << 16);
-                }
+
                 if (info.WinAAttributes & VBE_WINDOW_ATTRIBUTE_RELOCATABLE) {
                   info.WinFuncPtr = 0xC0000000UL;
                   *(Bit16u *)&(info.WinFuncPtr) = (Bit16u)(dispi_set_bank_farcall);
@@ -1209,10 +1205,10 @@ Bit16u *AX;Bit16u BX;
  */
 ASM_START
 vbe_biosfn_return_current_mode:
-  push ds
-  mov  ax, # BIOSMEM_SEG
-  mov  ds, ax
   call dispi_get_enable
+  push ds
+  mov  bx, # BIOSMEM_SEG
+  mov  ds, bx
   and  ax, # VBE_DISPI_ENABLED
   jz   no_vbe_mode
   mov  bx, # BIOSMEM_VBE_MODE
@@ -1241,16 +1237,16 @@ void vbe_biosfn_save_video_state(ES, BX)
 {
     Bit16u enable, i;
 
-    outw(VBE_DISPI_IOPORT_INDEX,VBE_DISPI_INDEX_ENABLE);
-    enable = inw(VBE_DISPI_IOPORT_DATA);
+    outw(io_vbe_select,VBE_DISPI_INDEX_ENABLE);
+    enable = inw(io_vbe_data);
     write_word(ES, BX, enable);
     BX += 2;
     if (!(enable & VBE_DISPI_ENABLED)) 
         return;
     for(i = VBE_DISPI_INDEX_XRES; i <= VBE_DISPI_INDEX_Y_OFFSET; i++) {
         if (i != VBE_DISPI_INDEX_ENABLE) {
-            outw(VBE_DISPI_IOPORT_INDEX, i);
-            write_word(ES, BX, inw(VBE_DISPI_IOPORT_DATA));
+            outw(io_vbe_select, i);
+            write_word(ES, BX, inw(io_vbe_data));
             BX += 2;
         }
     }
@@ -1266,24 +1262,24 @@ void vbe_biosfn_restore_video_state(ES, BX)
     BX += 2;
 
     if (!(enable & VBE_DISPI_ENABLED)) {
-        outw(VBE_DISPI_IOPORT_INDEX,VBE_DISPI_INDEX_ENABLE);
-        outw(VBE_DISPI_IOPORT_DATA, enable);
+        outw(io_vbe_select,VBE_DISPI_INDEX_ENABLE);
+        outw(io_vbe_data, enable);
     } else {
-        outw(VBE_DISPI_IOPORT_INDEX, VBE_DISPI_INDEX_XRES);
-        outw(VBE_DISPI_IOPORT_DATA, read_word(ES, BX));
+        outw(io_vbe_select, VBE_DISPI_INDEX_XRES);
+        outw(io_vbe_data, read_word(ES, BX));
         BX += 2;
-        outw(VBE_DISPI_IOPORT_INDEX, VBE_DISPI_INDEX_YRES);
-        outw(VBE_DISPI_IOPORT_DATA, read_word(ES, BX));
+        outw(io_vbe_select, VBE_DISPI_INDEX_YRES);
+        outw(io_vbe_data, read_word(ES, BX));
         BX += 2;
-        outw(VBE_DISPI_IOPORT_INDEX, VBE_DISPI_INDEX_BPP);
-        outw(VBE_DISPI_IOPORT_DATA, read_word(ES, BX));
+        outw(io_vbe_select, VBE_DISPI_INDEX_BPP);
+        outw(io_vbe_data, read_word(ES, BX));
         BX += 2;
-        outw(VBE_DISPI_IOPORT_INDEX,VBE_DISPI_INDEX_ENABLE);
-        outw(VBE_DISPI_IOPORT_DATA, enable);
+        outw(io_vbe_select,VBE_DISPI_INDEX_ENABLE);
+        outw(io_vbe_data, enable);
 
         for(i = VBE_DISPI_INDEX_BANK; i <= VBE_DISPI_INDEX_Y_OFFSET; i++) {
-            outw(VBE_DISPI_IOPORT_INDEX, i);
-            outw(VBE_DISPI_IOPORT_DATA, read_word(ES, BX));
+            outw(io_vbe_select, i);
+            outw(io_vbe_data, read_word(ES, BX));
             BX += 2;
         }
     }
@@ -1598,12 +1594,12 @@ Bit16u *AX; Bit16u BX; Bit16u CX; Bit16u DX; Bit16u ES; Bit16u DI;
         return;
     }
     
-    outw(VBE_DISPI_IOPORT_INDEX, VBE_DISPI_PALETTE_WRITE_INDEX);
-    outw(VBE_DISPI_IOPORT_DATA, DX);
-    outw(VBE_DISPI_IOPORT_INDEX, VBE_DISPI_PALETTE_DATA);
+    outw(io_vbe_select, VBE_DISPI_PALETTE_WRITE_INDEX);
+    outw(io_vbe_data, DX);
+    outw(io_vbe_select, VBE_DISPI_PALETTE_DATA);
 
     for (i = 0; i < CX * 2; i++) {
-        outw(VBE_DISPI_IOPORT_DATA, read_word(ES, DI + i * 2));
+        outw(io_vbe_data, read_word(ES, DI + i * 2));
     }
 
     *AX = 0x004f;
@@ -1694,11 +1690,11 @@ read_edid:
  push cx
  mov  cx, dx
  
- mov  dx, # VBE_DISPI_IOPORT_INDEX
+ mov  dx, _io_vbe_select
  mov  ax, # VBE_DISPI_INDEX_EDID_WINDOW
  out  dx, ax
 
- mov  dx, # VBE_DISPI_IOPORT_DATA
+ mov  dx, _io_vbe_data
  mov  ax, cx
  out  dx, ax
  in   ax, dx
@@ -1712,13 +1708,13 @@ read_edid:
  push di
  pushf
  
- mov  dx, # VBE_DISPI_IOPORT_INDEX
+ mov  dx, _io_vbe_select
  mov  ax, # VBE_DISPI_INDEX_EDID_DATA
  out  dx, ax
 
  mov cx, #64
  cld
- mov dx, # VBE_DISPI_IOPORT_DATA
+ mov dx, _io_vbe_data
  rep
    insw
 

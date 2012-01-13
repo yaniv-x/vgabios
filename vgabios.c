@@ -111,11 +111,23 @@ static void biosfn_read_state_info();
 static void biosfn_read_video_state_size();
 static Bit16u biosfn_save_video_state();
 static Bit16u biosfn_restore_video_state();
+
 extern Bit8u video_save_pointer_table[];
+extern Bit32u frame_buffer;
+extern Bit16u io_base;
+extern Bit16u io_vbe_select;
+extern Bit16u io_vbe_data;
 
 // This is for compiling with gcc2 and gcc3
 #define ASM_START #asm
 #define ASM_END   #endasm
+
+#define PCIBIOS_SERVICE_ID 0xb1
+#define PCIBIOS_FUNC_READ_DWORD 0x0a
+#define PCI_VENDOE_ID 0x1aaa
+#define PCI_DEVICE_ID 0x0100
+#define IO_VBE_SELECT_OFFSTE 2
+#define IO_VBE_DATA_OFFSTE 4
 
 ASM_START
 
@@ -149,10 +161,8 @@ vgabios_entry_point:
            
   jmp vgabios_init_func
 
-#ifdef PCIBIOS
 .org 0x18
 .word vgabios_pci_data
-#endif
 
 // Info from Bart Oldeman
 .org 0x1e
@@ -161,9 +171,7 @@ vgabios_entry_point:
 
 vgabios_name:
 .ascii	"Plex86/Bochs VGABios"
-#ifdef PCIBIOS
 .ascii	" (PCI)"
-#endif
 .ascii	" "
 .byte	0x00
 
@@ -203,15 +211,10 @@ vgabios_website:
 .byte	0x0a,0x0d
 .byte	0x00
 
-#ifdef PCIBIOS
 vgabios_pci_data:
 .ascii "PCIR"
-#ifdef CIRRUS
-.word 0x1013
-.word 0x00b8 // CLGD5446
-#else
-#error "Unknown PCI vendor and device id"
-#endif
+.word PCI_VENDOE_ID
+.word PCI_DEVICE_ID
 .word 0 // reserved
 .word 0x18 // dlen
 .byte 0 // revision
@@ -222,8 +225,20 @@ vgabios_pci_data:
 .byte 0 // intel x86 data
 .byte 0x80 // last image
 .word 0 // reserved
-#endif
 
+
+pci_bus:
+db 0
+pci_device:
+db 0 ; the upper five high bits are dev num and the lower three bits are the function num
+_io_base:
+dw 0
+_io_vbe_select:
+dw 0
+_io_vbe_data:
+dw 0
+_frame_buffer:
+dd 0
 
 ;; ============================================================================================
 ;;
@@ -231,6 +246,15 @@ vgabios_pci_data:
 ;;
 ;; ============================================================================================
 vgabios_init_func:
+  push cs
+  pop ds
+
+  mov pci_bus, ah
+  mov pci_device, al
+
+  call pci_prob
+  cmp ax, #1
+  jne prob_failed  
 
 ;; init vga card
   call init_vga_card
@@ -271,6 +295,12 @@ vgabios_init_func:
 #endif
 
   retf
+
+prob_failed:
+  mov si, #vgabios_start
+  mov byte [si + 2], #0
+  retf
+
 ASM_END
 
 /*
@@ -279,17 +309,18 @@ ASM_END
 ASM_START
 vgabios_int10_handler:
   pushf
+  push ds
+  push cs
+  pop ds ;; ds is now equal vga bios image base address (i.e. 0xc000)
+
 #ifdef DEBUG
   push es
-  push ds
   pusha
-  mov   bx, #0xc000
-  mov   ds, bx
   call _int10_debugmsg
   popa
-  pop ds
   pop es
 #endif
+
   cmp   ah, #0x0f
   jne   int10_test_1A
   call  biosfn_get_video_mode
@@ -394,7 +425,6 @@ int10_test_vbe_15:
 
 int10_normal:
   push es
-  push ds
   pusha
 
 ;; We have to set ds to access the right data segment
@@ -403,9 +433,9 @@ int10_normal:
   call _int10_func
 
   popa
-  pop ds
   pop es
 int10_end:
+  pop ds
   popf
   iret
 ASM_END
@@ -413,6 +443,56 @@ ASM_END
 #include "vgatables.h"
 #include "vgafonts.h"
 
+
+ASM_START
+pci_prob:
+
+    ;; sanity: test that it is the right device
+    mov ah, #PCIBIOS_SERVICE_ID
+    mov al, #PCIBIOS_FUNC_READ_DWORD
+    mov bh, pci_bus
+    mov bl, pci_device
+    mov di, #0
+    int #0x1a
+    jc failed
+    cmp cx, #PCI_VENDOE_ID
+    jne failed
+    shr ecx, #16
+    cmp cx, #PCI_DEVICE_ID
+    jne failed
+    
+    ;; init io
+    mov ah, #PCIBIOS_SERVICE_ID
+    mov di, #0x10 ; BAR-0 is the IO reagion  
+    int #0x1a
+    jc failed
+    test cx, #1
+    jz failed
+    and cx, #0xfffc
+    mov _io_base, cx
+    mov _io_vbe_select, cx
+    add _io_vbe_select, #IO_VBE_SELECT_OFFSTE
+    mov _io_vbe_data, cx
+    add _io_vbe_data, #IO_VBE_DATA_OFFSTE
+
+    ;; init fb
+    mov ah, #PCIBIOS_SERVICE_ID
+    mov di, #0x14 ; BAR-1 is the frame buffer 
+    int #0x1a
+    jc failed
+    test cx, #7
+    jnz failed
+    and ecx, #0xfffffff0
+    mov _frame_buffer, ecx
+
+    mov ax, #1
+    ret
+
+failed:
+    mov ax, #0
+    ret
+
+ASM_END
 /*
  * Boot time harware inits 
  */
@@ -603,7 +683,7 @@ static void int10_debugmsg(DI, SI, BP, SP, BX, DX, CX, AX, DS, ES, FLAGS)
 /*
  * int10 main dispatcher
  */
-static void int10_func(DI, SI, BP, SP, BX, DX, CX, AX, DS, ES, FLAGS)
+static void int10_func(DI, SI, BP, SP, BX, DX, CX, AX, ES, DS, FLAGS)
   Bit16u DI, SI, BP, SP, BX, DX, CX, AX, ES, DS, FLAGS;
 {
 
@@ -3846,9 +3926,9 @@ void printf(s)
         for (i=0; i<format_width; i++) {
           nibble = (arg >> (4 * digit)) & 0x000f;
           if (nibble <= 9)
-            outb(0x0500, nibble + '0');
+            outb(io_base, nibble + '0');
           else
-            outb(0x0500, (nibble - 10) + 'A');
+            outb(io_base, (nibble - 10) + 'A');
           digit--;
           }
         in_format = 0;
@@ -3858,77 +3938,16 @@ void printf(s)
       //  }
       }
     else {
-      outb(0x0500, c);
+      outb(io_base, c);
       }
     s ++;
     }
 }
 #endif
 
-ASM_START
-  ; get LFB address from PCI
-  ; in - ax: PCI device vendor
-  ; out - ax: LFB address (high 16 bit)
-  ;; NOTE - may be called in protected mode
-_pci_get_lfb_addr:
-  push bx
-  push cx
-  push dx
-  push eax
-    mov bx, ax
-    xor cx, cx
-    mov dl, #0x00
-    call pci_read_reg
-    cmp ax, #0xffff
-    jz pci_get_lfb_addr_5
- pci_get_lfb_addr_3:
-    mov dl, #0x00
-    call pci_read_reg
-    cmp ax, bx ;; check vendor
-    jz pci_get_lfb_addr_4
-    add cx, #0x8
-    cmp cx, #0x200 ;; search bus #0 and #1
-    jb pci_get_lfb_addr_3
- pci_get_lfb_addr_5:
-    xor dx, dx ;; no LFB
-    jmp pci_get_lfb_addr_6
- pci_get_lfb_addr_4:
-    mov dl, #0x10 ;; I/O space #0
-    call pci_read_reg
-    test ax, #0xfff1
-    jnz pci_get_lfb_addr_5
-    shr eax, #16
-    mov dx, ax ;; LFB address
- pci_get_lfb_addr_6:
-  pop eax
-  mov ax, dx
-  pop dx
-  pop cx
-  pop bx
-  ret
-
-  ; read PCI register
-  ; in - cx: device/function
-  ; in - dl: register
-  ; out - eax: value
-pci_read_reg:
-  mov eax, #0x00800000
-  mov ax, cx
-  shl eax, #8
-  mov al, dl
-  mov dx, #0xcf8
-  out dx, eax
-  add dl, #4
-  in  eax, dx
-  ret
-ASM_END
 
 #ifdef VBE
 #include "vbe.c"
-#endif
-
-#ifdef CIRRUS
-#include "clext.c"
 #endif
 
 // --------------------------------------------------------------------------------------------
