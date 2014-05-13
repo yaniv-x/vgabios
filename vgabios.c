@@ -281,19 +281,6 @@ vgabios_init_func:
   mov ax,#0x0003
   int #0x10
 
-;; show info
-  call _display_info
-
-#ifdef VBE  
-;; show vbe info
-  call vbe_display_info  
-#endif
-
-#ifdef CIRRUS
-;; show cirrus info
-  call cirrus_display_info
-#endif
-
   retf
 
 prob_failed:
