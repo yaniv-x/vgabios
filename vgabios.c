@@ -175,6 +175,11 @@ vgabios_name:
 .ascii	" "
 .byte	0x00
 
+ignition_expnsion_info:
+.word 1
+.ascii  "Plex86/Bochs VGABios (modified)"
+.byte   0x00
+
 vgabios_version:
 #ifndef VGABIOS_VERS
 .ascii	"current-cvs"
@@ -280,6 +285,12 @@ vgabios_init_func:
 ;; init video mode and clear the screen
   mov ax,#0x0003
   int #0x10
+
+  mov eax, #0x696e6749 ;"Igni"
+  mov ecx, #0x666e4974 ;"tInf"
+  mov dx, ds
+  shl edx, 16
+  mov dx, #ignition_expnsion_info
 
   retf
 
