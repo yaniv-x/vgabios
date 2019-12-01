@@ -120,7 +120,7 @@ typedef struct ModeInfoBlock
    Bit8u  MemoryModel;
    Bit8u  BankSize;
    Bit8u  NumberOfImagePages;
-   Bit8u  Reserved_page;
+   Bit8u  Reserved_0;
 // Direct Color fields (required for direct/6 and YUV/7 memory models)
    Bit8u  RedMaskSize;
    Bit8u  RedFieldPosition;
@@ -133,8 +133,8 @@ typedef struct ModeInfoBlock
    Bit8u  DirectColorModeInfo;
 // Mandatory information for VBE 2.0 and above
    Bit32u PhysBasePtr;
-   Bit32u OffScreenMemOffset;
-   Bit16u OffScreenMemSize;
+   Bit32u Reserved_1;
+   Bit16u Reserved_2;
 // Mandatory information for VBE 3.0 and above
    Bit16u LinBytesPerScanLine;
    Bit8u  BnkNumberOfPages;
@@ -232,7 +232,7 @@ typedef struct ModeInfoListItem
 // Mode Attributes
 
 #define VBE_MODE_ATTRIBUTE_SUPPORTED                     0x0001
-#define VBE_MODE_ATTRIBUTE_EXTENDED_INFORMATION_AVAILABLE  0x0002
+#define VBE_MODE_ATTRIBUTE_RESERVED                      0x0002
 #define VBE_MODE_ATTRIBUTE_TTY_BIOS_SUPPORT              0x0004
 #define VBE_MODE_ATTRIBUTE_COLOR_MODE                    0x0008
 #define VBE_MODE_ATTRIBUTE_GRAPHICS_MODE                 0x0010

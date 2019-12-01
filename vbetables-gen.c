@@ -123,18 +123,19 @@ int main(int argc, char **argv)
     if (pm->depth == 4)
       printf("{ /*Bit16u ModeAttributes*/ %s,\n", 
              "VBE_MODE_ATTRIBUTE_SUPPORTED | "
-             "VBE_MODE_ATTRIBUTE_EXTENDED_INFORMATION_AVAILABLE | "
+             "VBE_MODE_ATTRIBUTE_RESERVED | "
              "VBE_MODE_ATTRIBUTE_COLOR_MODE | "
              "VBE_MODE_ATTRIBUTE_TTY_BIOS_SUPPORT | "
              "VBE_MODE_ATTRIBUTE_GRAPHICS_MODE");
     else
       printf("{ /*Bit16u ModeAttributes*/ %s,\n", 
              "VBE_MODE_ATTRIBUTE_SUPPORTED | "
-             "VBE_MODE_ATTRIBUTE_EXTENDED_INFORMATION_AVAILABLE | "
+             "VBE_MODE_ATTRIBUTE_RESERVED | "
              "VBE_MODE_ATTRIBUTE_COLOR_MODE | "
              "VBE_MODE_ATTRIBUTE_NOT_VGA_COMPATIBLE |"
              "VBE_MODE_ATTRIBUTE_LINEAR_FRAME_BUFFER_MODE | "
              "VBE_MODE_ATTRIBUTE_GRAPHICS_MODE");
+
     printf("/*Bit8u  WinAAttributes*/ %s,\n",
            "VBE_WINDOW_ATTRIBUTE_RELOCATABLE | "
            "VBE_WINDOW_ATTRIBUTE_READABLE | "
@@ -175,7 +176,7 @@ int main(int argc, char **argv)
     printf("/*Bit8u  MemoryModel*/ %s,\n", str);
     printf("/*Bit8u  BankSize*/ %d,\n", 0);
     printf("/*Bit8u  NumberOfImagePages*/ %d,\n", 0);
-    printf("/*Bit8u  Reserved_page*/ %d,\n", 1);
+    printf("/*Bit8u  Reserved_0*/ %d,\n", 1);
 
     // Direct Color fields (required for direct/6 and YUV/7 memory models)
     switch(pm->depth) {
@@ -257,8 +258,8 @@ int main(int argc, char **argv)
 
      // Mandatory information for VBE 2.0 and above
     printf("/*Bit32u PhysBasePtr*/ %s,\n", "0");
-    printf("/*Bit32u OffScreenMemOffset*/ %d,\n", 0);
-    printf("/*Bit16u OffScreenMemSize*/ %d,\n", 0);
+    printf("/*Bit32u Reserved_1*/ %d,\n", 0);
+    printf("/*Bit16u Reserved_2*/ %d,\n", 0);
     // Mandatory information for VBE 3.0 and above
     printf("/*Bit16u LinBytesPerScanLine*/ %d,\n", pitch);
     printf("/*Bit8u  BnkNumberOfPages*/ %d,\n", 0);
