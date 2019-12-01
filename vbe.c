@@ -771,6 +771,58 @@ lsubul:
   SEG  SS
   sbb  bx,2[di]
   ret
+  
+landl:
+landul:
+  SEG  SS
+  and	ax,[di]
+  SEG  SS
+  and	bx,2[di]
+  ret
+  
+lcoml:
+lcomul:
+  not	ax
+  not	bx
+  ret
+
+ltstl:
+ltstul:
+  and  eax, #0x0000FFFF
+  shl  ebx, #16
+  or   eax, ebx
+  shr  ebx, #16
+  test eax, eax
+  ret
+
+lcmpl:
+lcmpul:
+  and eax, #0x0000FFFF
+  shl ebx, #16
+  or  eax, ebx
+  shr ebx, #16
+  SEG SS
+  cmp eax, dword ptr [di]
+  ret
+
+lmulu:
+lmulul:
+  and eax, #0x0000FFFF
+  shl ebx, #16
+  or  eax, ebx
+  SEG SS
+  mul eax, dword ptr [di]
+  mov ebx, eax
+  shr ebx, #16
+  ret
+  
+laddl:
+laddul:
+  SEG SS
+  add ax,[di]
+  SEG SS
+  adc bx,2[di]
+  ret
 
 ASM_END
 
@@ -880,17 +932,6 @@ no_vbe_flag:
   mov  si, #_no_vbebios_info_string
   jmp  _display_string
 
-; helper function for memory size calculation
-
-lmulul:
-  and eax, #0x0000FFFF
-  shl ebx, #16
-  or  eax, ebx
-  SEG SS
-  mul eax, dword ptr [di]
-  mov ebx, eax
-  shr ebx, #16
-  ret
 ASM_END
 
 /** Function 00h - Return VBE Controller Information
