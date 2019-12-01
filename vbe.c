@@ -50,15 +50,15 @@ extern Bit16u vesa_pm_io_ports_table[];
 ASM_START
 // FIXME: 'merge' these (c) etc strings with the vgabios.c strings?
 _vbebios_copyright:
-.ascii       "Bochs/Plex86 VBE(C) 2003 http://savannah.nongnu.org/projects/vgabios/"
+.ascii       "Nox/Bochs/Plex86 VBE(C) 2003"
 .byte        0x00
 
 _vbebios_vendor_name:
-.ascii       "Bochs/Plex86 Developers"
+.ascii       "Nox/Bochs/Plex86 Developers"
 .byte        0x00
 
 _vbebios_product_name:
-.ascii       "Bochs/Plex86 VBE Adapter"
+.ascii       "Nox/Bochs/Plex86 VBE Adapter"
 .byte        0x00
 
 _vbebios_product_revision:
@@ -1024,7 +1024,7 @@ Bit16u *AX;Bit16u ES;Bit16u DI;
         vbe_info_block.VbeSignature[3] = 'A';
 
         // VBE Version supported
-        vbe_info_block.VbeVersion = 0x0200;
+        vbe_info_block.VbeVersion = 0x0300;
 
         // OEM String
         vbe_info_block.OemStringPtr_Seg = 0xc000;
