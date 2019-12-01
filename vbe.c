@@ -383,6 +383,26 @@ _dispi_get_max_xres:
   pop  bx
   pop  dx
   ret
+  
+  _dispi_get_max_yres:
+  push dx
+  push bx
+  call dispi_get_enable
+  mov  bx, ax
+  or   ax, # VBE_DISPI_GETCAPS
+  call _dispi_set_enable
+  mov  dx, _io_vbe_select
+  mov  ax, # VBE_DISPI_INDEX_YRES
+  out  dx, ax
+  mov  dx, _io_vbe_data
+  in   ax, dx
+  push ax
+  mov  ax, bx
+  call _dispi_set_enable
+  pop  ax
+  pop  bx
+  pop  dx
+  ret
 
 _dispi_get_max_bpp:
   push dx
@@ -845,15 +865,25 @@ static Bit16u init_vbe_lfb()
   vram_size = ( Bit32u)inw(io_vbe_data) << 16;
 
   while (cur_info->mode != VBE_VESA_MODE_END_OF_LIST) {
-    if ((cur_info->info.ModeAttributes & VBE_MODE_ATTRIBUTE_LINEAR_FRAME_BUFFER_MODE) /*== VBE_MODE_ATTRIBUTE_LINEAR_FRAME_BUFFER_MODE*/) {
+    if ((cur_info->info.ModeAttributes & VBE_MODE_ATTRIBUTE_LINEAR_FRAME_BUFFER_MODE)) {
       cur_info->info.PhysBasePtr = frame_buffer;
     }
 
-    pages = vram_size / ((Bit32u)cur_info->info.YResolution * (Bit32u)cur_info->info.BytesPerScanLine);
+    pages = vram_size / ALIGN(((Bit32u)cur_info->info.YResolution * (Bit32u)cur_info->info.BytesPerScanLine),
+                              (Bit32u)64 * (Bit32u)1024);
+    pages = pages / cur_info->info.NumberOfPlanes;
+    pages = (!pages) ? ~pages : MIN(0x0fe, pages - 1);
 
-    // NumberOfImagePages == 0xff in-case of insufficient memory to support this mode. It can be use to skip
-    // this mode in mods query replacing current test method.
-    cur_info->info.NumberOfImagePages = pages / cur_info->info.NumberOfPlanes - 1; ; 
+    cur_info->info.NumberOfImagePages = pages;
+    cur_info->info.BnkNumberOfPages = pages;
+
+    if ((cur_info->info.LinNumberOfPages = pages) == 0xff) {
+        printf("insufficient memory to support mode 0x%x (0x%x x 0x%x x 0x%x)\n",
+               cur_info->mode,
+               cur_info->info.XResolution,
+               cur_info->info.YResolution,
+               cur_info->info.BitsPerPixel);
+    }
 
     cur_info++;
   }
@@ -955,7 +985,6 @@ Bit16u *AX;Bit16u ES;Bit16u DI;
         Bit16u            vbe2_info;
         Bit16u            cur_mode=0;
         Bit16u            cur_ptr=34;
-        Bit16u            size_64k;
         ModeInfoListItem  *cur_info=&mode_info_list;
 
         status = read_word(ss, AX);
@@ -1037,11 +1066,10 @@ Bit16u *AX;Bit16u ES;Bit16u DI;
 
         do
         {
-                size_64k = (Bit16u)((Bit32u)cur_info->info.XResolution * cur_info->info.XResolution * cur_info->info.BitsPerPixel) >> 19;
-
                 if ((cur_info->info.XResolution <= dispi_get_max_xres()) &&
+                    (cur_info->info.YResolution <= dispi_get_max_yres()) &&
                     (cur_info->info.BitsPerPixel <= dispi_get_max_bpp()) &&
-                    (size_64k <= vbe_info_block.TotalMemory)) {
+                    (cur_info->info.NumberOfImagePages != 0xff)) {
 #ifdef DEBUG
                   printf("VBE found mode %x => %x\n", cur_info->mode,cur_mode);
 #endif

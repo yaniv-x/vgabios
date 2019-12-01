@@ -44,4 +44,7 @@ typedef unsigned short Boolean;
 #define SCREEN_MEM_START(x,y,p) ((((x*y*2)|0x00ff)+1)*p)
 #define SCREEN_IO_START(x,y,p) ((((x*y)|0x00ff)+1)*p)
 
+#define ALIGN(a, b) (((a) + ((b) - 1)) & ~((b) - 1))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 #endif
